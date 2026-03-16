@@ -10,7 +10,6 @@ use crossterm::{
 use rand::RngExt;
 use std::io::{self, Write, stdout};
 
-const FPS: u32 = 6;
 const MAX_CROW_SPEED: f32 = 4.0;
 
 #[derive(Debug)]
@@ -23,6 +22,7 @@ struct Game {
 
     last_event: String,
     debug: bool,
+    fps: u32,
 }
 
 impl Default for Game {
@@ -36,6 +36,7 @@ impl Default for Game {
 
             last_event: String::new(),
             debug: false,
+            fps: 6,
         }
     }
 }
@@ -199,7 +200,12 @@ fn main() -> Result<(), std::io::Error> {
     let result = std::panic::catch_unwind(move || {
         loop {
             let frame_start_time = std::time::Instant::now();
-            let frame_end_time = frame_start_time + std::time::Duration::from_secs(1) / FPS;
+            let frame_end_time = frame_start_time
+                + if game.fps != 0 {
+                    std::time::Duration::from_secs(1) / game.fps
+                } else {
+                    std::time::Duration::from_hours(69)
+                };
 
             game.update();
             game.refresh_terminal_info().unwrap();
@@ -342,6 +348,7 @@ fn load_args(game: &mut Game) {
                     .unwrap_or(game.max_crows)
             }
             "--debug" => game.debug = true,
+            "--fps" => game.fps = args.next().and_then(|s| s.parse().ok()).unwrap_or(game.fps),
             _ => {
                 let mut chars = arg.chars();
                 if chars.next().is_none_or(|f| f != '-') {
@@ -357,6 +364,9 @@ fn load_args(game: &mut Game) {
                                 .unwrap_or(game.max_crows)
                         }
                         'd' => game.debug = true,
+                        'f' => {
+                            game.fps = args.next().and_then(|s| s.parse().ok()).unwrap_or(game.fps)
+                        }
                         _ => eprintln!("Invalid flag: {flag}"),
                     }
                 }
