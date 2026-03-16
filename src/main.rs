@@ -182,8 +182,7 @@ fn main() -> Result<(), std::io::Error> {
                 crow.draw(&mut stdout).unwrap();
             }
 
-            if game.debug
-            {
+            if game.debug {
                 queue!(
                     stdout,
                     MoveTo(0, game.term_height.saturating_sub(1)),
@@ -193,11 +192,13 @@ fn main() -> Result<(), std::io::Error> {
             }
             stdout.flush().unwrap();
 
-            if poll(frame_end_time - std::time::Instant::now()).unwrap()
-                && let Event::Key(e) = read().unwrap()
-            {
-                game.last_event = format!("{:?}", e);
-                handle_events(e, &mut game);
+            if poll(frame_end_time - std::time::Instant::now()).unwrap() {
+                while poll(std::time::Duration::ZERO).unwrap()
+                    && let Event::Key(e) = read().unwrap()
+                {
+                    game.last_event = format!("{:?}", e);
+                    handle_events(e, &mut game);
+                }
             }
         }
     });
@@ -287,7 +288,12 @@ fn load_args(game: &mut Game) {
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
-            "--crows" => game.max_crows = args.next().and_then(|s| s.parse().ok()).unwrap_or(game.max_crows),
+            "--crows" => {
+                game.max_crows = args
+                    .next()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(game.max_crows)
+            }
             "--debug" => game.debug = true,
             _ => {
                 let mut chars = arg.chars();
@@ -297,12 +303,17 @@ fn load_args(game: &mut Game) {
                 }
                 for flag in chars {
                     match flag {
-                        'C' => game.max_crows = args.next().and_then(|s| s.parse().ok()).unwrap_or(game.max_crows),
+                        'C' => {
+                            game.max_crows = args
+                                .next()
+                                .and_then(|s| s.parse().ok())
+                                .unwrap_or(game.max_crows)
+                        }
                         'd' => game.debug = true,
                         _ => eprintln!("Invalid flag: {flag}"),
                     }
                 }
-            },
+            }
         }
     }
 }
