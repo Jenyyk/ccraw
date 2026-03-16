@@ -6,3 +6,8 @@ edition = "2024"
 [dependencies]
 crossterm = "0.29.0"
 rand = "0.10.0"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
