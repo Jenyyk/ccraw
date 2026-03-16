@@ -1,4 +1,4 @@
-use std::io::{BufRead, Write};
+use std::io::{BufRead, Read, Write};
 
 fn main() {
     rerun_if_changed_recursive("crowscii-art");
@@ -23,6 +23,14 @@ fn main() {
         let frames = crow_dir.read_dir().unwrap();
         let mut frames = frames.map(|f| f.unwrap()).collect::<Vec<_>>();
         frames.sort_by_key(|f| f.path());
+        frames.retain(|f| f.file_name() != "meta");
+        let meta_path = crow_dir.join("meta");
+        if let Some(mut meta_file) = std::fs::File::open(meta_path).ok() {
+            let mut buf = String::new();
+            let _ = meta_file.read_to_string(&mut buf);
+            out_file.write_all(buf.trim().as_bytes()).unwrap();
+        }
+
         for frame in frames {
             let frame_path = frame.path();
             let frame_file = std::fs::File::open(frame_path).unwrap();

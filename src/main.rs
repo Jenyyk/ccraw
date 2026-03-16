@@ -68,10 +68,12 @@ impl Game {
 
     fn clear_old_crows(&mut self) {
         self.crows.retain(|crow| {
+            let variant = &self.variants[crow.variant_index];
+
             !(crow.position.0 > self.term_width as f32
-                || (crow.position.0 + crow.variant.width as f32) < 0.0
+                || (crow.position.0 + variant.width as f32) < 0.0
                 || crow.position.1 > self.term_height as f32
-                || (crow.position.1 + crow.variant.height as f32) < 0.0)
+                || (crow.position.1 + variant.height as f32) < 0.0)
         })
     }
 
@@ -81,12 +83,27 @@ impl Game {
 
     fn create_crow(&self) -> Crow {
         let mut rng = rand::rng();
-        let variant = self.variants[rng.random_range(0..self.variants.len())].clone();
         let mut speed = (rng.random_range(1.0..3.5), rng.random_range(-1.2..1.2));
         if rng.random_bool(0.5) {
             speed.0 = -speed.0;
         }
         let acceleration = (rng.random_range(-0.3..0.3), rng.random_range(-0.1..0.1));
+
+        let allowed_variants: [VariantDirection; 2] = if speed.0 > 0.0 && acceleration.0 > 0.0 {
+            [VariantDirection::Omni, VariantDirection::Right]
+        } else if speed.0 < 0.0 && acceleration.0 < 0.0 {
+            [VariantDirection::Omni, VariantDirection::Left]
+        } else {
+            [VariantDirection::Omni, VariantDirection::Omni]
+        };
+        let (variant_index, variant) = loop {
+            let random_index = rng.random_range(0..self.variants.len());
+            let variant = &self.variants[random_index];
+            if allowed_variants.contains(&variant.direction) {
+                break (random_index, variant);
+            }
+        };
+
         let spawn_y = rng.random_range(3..self.term_height - 3);
         let position = if speed.0 > 0.0 {
             (-(variant.width as f32) + 0.2, spawn_y as f32)
@@ -95,47 +112,60 @@ impl Game {
         };
 
         Crow {
-            variant,
+            variant_index,
             current_frame: 0,
             position,
             speed,
             acceleration,
         }
     }
+
+    fn draw_crow(&self, stdout: &mut io::Stdout, crow: &Crow) -> Result<(), io::Error> {
+        let variant = &self.variants[crow.variant_index];
+        let cur_frame = &variant.frames[crow.current_frame % variant.total_frames];
+
+        for (y, line) in cur_frame.iter().enumerate() {
+            for (x, ch) in line.char_indices() {
+                if ch == 's' {
+                    continue;
+                }
+                queue!(
+                    stdout,
+                    MoveTo(
+                        crow.position.0 as u16 + x as u16,
+                        crow.position.1 as u16 + y as u16,
+                    ),
+                    Print(ch)
+                )?;
+            }
+        }
+        Ok(())
+    }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 struct CrowVariant {
     width: usize,
     height: usize,
     frames: Vec<Vec<String>>,
+    direction: VariantDirection,
     total_frames: usize,
+}
+#[derive(Debug, Default, PartialEq)]
+enum VariantDirection {
+    Left,
+    Right,
+    #[default]
+    Omni,
 }
 
 #[derive(Debug)]
 struct Crow {
-    variant: CrowVariant,
+    variant_index: usize,
     current_frame: usize,
     position: (f32, f32),
     speed: (f32, f32),
     acceleration: (f32, f32),
-}
-
-impl Crow {
-    fn draw(&self, stdout: &mut io::Stdout) -> Result<(), std::io::Error> {
-        let cur_frame = &self.variant.frames[self.current_frame % self.variant.total_frames];
-        for (num, line) in cur_frame.iter().enumerate() {
-            queue!(
-                stdout,
-                MoveTo(
-                    self.position.0 as u16,
-                    (self.position.1 as u16 + num as u16).saturating_sub(1),
-                ),
-                Print(line)
-            )?;
-        }
-        Ok(())
-    }
 }
 
 fn main() -> Result<(), std::io::Error> {
@@ -179,7 +209,7 @@ fn main() -> Result<(), std::io::Error> {
             }
             queue!(stdout, Clear(crossterm::terminal::ClearType::All)).unwrap();
             for crow in &game.crows {
-                crow.draw(&mut stdout).unwrap();
+                game.draw_crow(&mut stdout, crow).unwrap();
             }
 
             if game.debug {
@@ -222,6 +252,7 @@ fn parse_crowfile(crowfile: &str) -> Vec<CrowVariant> {
     let mut frames = Vec::new();
     let mut lines = Vec::new();
     let mut line = String::new();
+    let mut direction = VariantDirection::Omni;
 
     for ch in chars {
         match ch {
@@ -231,15 +262,31 @@ fn parse_crowfile(crowfile: &str) -> Vec<CrowVariant> {
             'f' => {
                 frames.push(std::mem::take(&mut lines));
             }
+            'l' => {
+                direction = VariantDirection::Left;
+            }
+            'r' => {
+                direction = VariantDirection::Right;
+            }
             'c' => {
+                let height = frames.iter().map(|f| f.len()).max().unwrap_or(0);
+                let width = frames
+                    .iter()
+                    .map(|f| f.iter().map(|l| l.len()).max().unwrap_or(0))
+                    .max()
+                    .unwrap_or(0);
+                for f in frames.iter_mut() {
+                    for l in f.iter_mut() {
+                        let missing_length = width - l.len();
+                        l.push_str(&"s".repeat(missing_length));
+                    }
+                }
+
                 crows.push(CrowVariant {
-                    height: frames.iter().map(|f| f.len()).max().unwrap_or(0),
-                    width: frames
-                        .iter()
-                        .map(|f| f.iter().map(|l| l.len()).max().unwrap_or(0))
-                        .max()
-                        .unwrap_or(0),
+                    height,
+                    width,
                     total_frames: frames.len(),
+                    direction: std::mem::take(&mut direction),
                     frames: std::mem::take(&mut frames),
                 });
             }
