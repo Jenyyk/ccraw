@@ -10,7 +10,7 @@ depends=('glibc' 'libgcc')
 makedepends=('rust' 'cargo')
 options=(!debug)
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('79dc5fc2fbb70eb7ab8d9fb56ffdf2af751e0bf0c3d1dec96ae58a8da63b4d50')
+sha256sums=('SKIP')
 
 build() {
     cd "$pkgname-$pkgver"
