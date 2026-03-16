@@ -349,6 +349,7 @@ fn load_args(game: &mut Game) {
             }
             "--debug" => game.debug = true,
             "--fps" => game.fps = args.next().and_then(|s| s.parse().ok()).unwrap_or(game.fps),
+            "--help" => print_help(),
             _ => {
                 let mut chars = arg.chars();
                 if chars.next().is_none_or(|f| f != '-') {
@@ -364,6 +365,7 @@ fn load_args(game: &mut Game) {
                                 .unwrap_or(game.max_crows)
                         }
                         'd' => game.debug = true,
+                        'h' => print_help(),
                         'f' => {
                             game.fps = args.next().and_then(|s| s.parse().ok()).unwrap_or(game.fps)
                         }
@@ -373,6 +375,23 @@ fn load_args(game: &mut Game) {
             }
         }
     }
+}
+
+fn print_help() {
+    println!("Usage: ccraw [options]");
+    println!("Options:");
+    println!("  -C <num>  Set the maximum number of crows");
+    println!("  -d        Enable debug mode");
+    println!("  -h        Print this help message");
+    println!("  -f <num>  Set the frames per second");
+    println!("  for more in-depth options, see the manual: man ccraw");
+    println!();
+    println!("In app controls:");
+    println!("  q    Quit");
+    println!("  +    Add a crow");
+    println!("  -    Remove a crow");
+
+    graceful_exit();
 }
 
 mod tests {
