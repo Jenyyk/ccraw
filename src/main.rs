@@ -139,11 +139,14 @@ fn main() -> Result<(), std::io::Error> {
     let crowfile = include_str!("../compiled_crows.txt");
     let crow_variants: Vec<CrowVariant> = parse_crowfile(crowfile);
 
-    // prepare
+    // load settings
     let mut game = Game {
         variants: crow_variants,
         ..Default::default()
     };
+    load_args(&mut game);
+
+    // prepare terminal
     let mut stdout = stdout();
     game.refresh_terminal_info()?;
     execute!(stdout, EnterAlternateScreen, cursor::Hide)?;
@@ -273,6 +276,17 @@ fn graceful_exit() {
 fn cleanup() {
     let _ = disable_raw_mode();
     let _ = execute!(io::stdout(), LeaveAlternateScreen, cursor::Show);
+}
+
+fn load_args(game: &mut Game) {
+    let mut args = std::env::args().skip(1);
+
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--crows" => game.max_crows = args.next().and_then(|s| s.parse().ok()).unwrap_or(game.max_crows),
+            _ => eprintln!("Invalid argument: {arg}"),
+        }
+    }
 }
 
 mod tests {
