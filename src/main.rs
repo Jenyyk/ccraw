@@ -20,7 +20,9 @@ struct Game {
     crows: Vec<Crow>,
     variants: Vec<CrowVariant>,
     max_crows: usize,
+
     last_event: String,
+    debug: bool,
 }
 
 impl Default for Game {
@@ -31,7 +33,9 @@ impl Default for Game {
             crows: Vec::new(),
             variants: Vec::new(),
             max_crows: 5,
+
             last_event: String::new(),
+            debug: false,
         }
     }
 }
@@ -177,8 +181,8 @@ fn main() -> Result<(), std::io::Error> {
             for crow in &game.crows {
                 crow.draw(&mut stdout).unwrap();
             }
-            // if in debug mode, print events to screen
-            #[cfg(debug_assertions)]
+
+            if game.debug
             {
                 queue!(
                     stdout,
@@ -284,7 +288,21 @@ fn load_args(game: &mut Game) {
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--crows" => game.max_crows = args.next().and_then(|s| s.parse().ok()).unwrap_or(game.max_crows),
-            _ => eprintln!("Invalid argument: {arg}"),
+            "--debug" => game.debug = true,
+            _ => {
+                let mut chars = arg.chars();
+                if chars.next().is_none_or(|f| f != '-') {
+                    eprintln!("Invalid argument: {arg}");
+                    continue;
+                }
+                for flag in chars {
+                    match flag {
+                        'C' => game.max_crows = args.next().and_then(|s| s.parse().ok()).unwrap_or(game.max_crows),
+                        'd' => game.debug = true,
+                        _ => eprintln!("Invalid flag: {flag}"),
+                    }
+                }
+            },
         }
     }
 }
