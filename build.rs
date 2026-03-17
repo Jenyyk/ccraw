@@ -25,7 +25,7 @@ fn main() {
         frames.sort_by_key(|f| f.path());
         frames.retain(|f| f.file_name() != "meta");
         let meta_path = crow_dir.join("meta");
-        if let Some(mut meta_file) = std::fs::File::open(meta_path).ok() {
+        if let Ok(mut meta_file) = std::fs::File::open(meta_path) {
             let mut buf = String::new();
             let _ = meta_file.read_to_string(&mut buf);
             out_file.write_all(buf.trim().as_bytes()).unwrap();

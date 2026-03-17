@@ -130,14 +130,16 @@ impl Game {
                 if ch == 's' {
                     continue;
                 }
-                queue!(
-                    stdout,
-                    MoveTo(
-                        crow.position.0 as u16 + x as u16,
-                        crow.position.1 as u16 + y as u16,
-                    ),
-                    Print(ch)
-                )?;
+                let x_pos = crow.position.0 + x as f32;
+                let y_pos = crow.position.1 + y as f32;
+                if x_pos < 0.0
+                    || x_pos >= self.term_width as f32
+                    || y_pos < 0.0
+                    || y_pos >= self.term_height as f32
+                {
+                    continue;
+                }
+                queue!(stdout, MoveTo(x_pos as u16, y_pos as u16,), Print(ch))?;
             }
         }
         Ok(())
